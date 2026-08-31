@@ -1,15 +1,20 @@
 package ecommerce.analytics
 
 import ecommerce.model.Transaction
-import ecommerce.parsing.TransactionParser
 import org.apache.spark.rdd.RDD
 
 /** Analytics functions over [[Transaction]] data.
   *
+  * This object is analytics-only: it does not read files, parse CSV, write
+  * files, know file paths, or print to the console. Parsing raw lines into
+  * transactions is the responsibility of [[ecommerce.parsing.TransactionParser]]
+  * (pure, single-record) and [[ecommerce.parsing.TransactionRDDParser]]
+  * (Spark RDD transformation).
+  *
   * The single-transaction functions (such as `revenue`) and the predicate
   * `minimumPrice` are pure and require no Spark dependency, so they can be
   * unit tested without starting a SparkSession. The RDD-based functions
-  * demonstrate the required functional Spark operations (`map`, `flatMap`,
+  * demonstrate the required functional Spark operations (`map`,
   * `reduceByKey`) while still delegating all business rules to pure helpers.
   */
 object TransactionAnalytics {
@@ -36,27 +41,6 @@ object TransactionAnalytics {
     */
   def minimumPrice(minimum: Double)(transaction: Transaction): Boolean =
     transaction.price >= minimum
-
-  /** Converts raw CSV lines into an RDD of valid [[Transaction]] values.
-    *
-    * Each line is parsed independently via [[TransactionParser.parseLine]],
-    * which returns an `Either[String, Transaction]`. Pattern matching is
-    * used inside `flatMap` to keep only the successfully parsed lines:
-    * `Right(transaction)` contributes exactly one element to the resulting
-    * RDD, while `Left(_)` (a parsing failure) contributes none. This is a
-    * standard functional idiom for turning a validation result into an
-    * optional value without throwing exceptions or using mutable state.
-    *
-    * @param lines raw, unparsed CSV lines (header already removed)
-    * @return an RDD containing only the successfully parsed transactions
-    */
-  def parseTransactions(lines: RDD[String]): RDD[Transaction] =
-    lines
-      .map(TransactionParser.parseLine)
-      .flatMap {
-        case Right(transaction) => Some(transaction)
-        case Left(_)            => None
-      }
 
   /** Computes total revenue per product category.
     *

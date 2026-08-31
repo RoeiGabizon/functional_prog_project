@@ -2,6 +2,7 @@ package ecommerce
 
 import ecommerce.analytics.TransactionAnalytics
 import ecommerce.io.{DataLoader, DataWriter}
+import ecommerce.parsing.TransactionRDDParser
 import org.apache.spark.sql.SparkSession
 
 /** Entry point of the Functional E-Commerce Analytics application.
@@ -33,11 +34,21 @@ object Main {
     // 1. Load raw transaction lines (I/O layer).
     val rawLines = DataLoader.loadTransactionLines(spark, TransactionsPath)
 
-    // 2 & 3. Parse lines into valid Transactions (pure parsing + Spark map/flatMap).
-    val transactions = TransactionAnalytics.parseTransactions(rawLines)
-    transactions.cache()
+    // 2. Parse each line into an Either[String, Transaction].
+    // Cached because it is the shared source for both the valid-transaction
+    // RDD and the invalid-record counts below, avoiding re-parsing the raw
+    // lines twice.
+    val parseResults = TransactionRDDParser.parseResults(rawLines).cache()
 
-    println(s"Total valid transactions: ${transactions.count()}")
+    val inputCount = parseResults.count()
+    val transactions = TransactionRDDParser.validTransactions(parseResults)
+    transactions.cache()
+    val validCount = transactions.count()
+    val invalidCount = inputCount - validCount
+
+    println(s"Input records: $inputCount")
+    println(s"Valid transactions: $validCount")
+    println(s"Invalid transactions: $invalidCount")
 
     // 4. Revenue by category.
     val revenueByCategory = TransactionAnalytics.revenueByCategory(transactions)
