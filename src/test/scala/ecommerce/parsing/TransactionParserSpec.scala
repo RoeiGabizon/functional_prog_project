@@ -62,4 +62,11 @@ class TransactionParserSpec extends AnyFunSuite {
 
     assert(TransactionParser.parseLine(line).isLeft)
   }
+
+  test("TransactionParser can be used through the CsvParser trait") {
+    val parser: CsvParser[Transaction] = TransactionParser
+    val line = "1,10,100,Electronics,50.0,3,Israel,2025-01-01"
+
+    assert(parser.parseLine(line).isRight)
+  }
 }
