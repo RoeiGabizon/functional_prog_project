@@ -1,6 +1,81 @@
 productId,name,category
-100,Wireless Headphones,Electronics
-101,Functional Programming in Scala,Books
-102,Cotton T-Shirt,Clothing
-103,Smart Watch,Electronics
-104,Building Blocks Set,Toys
+1,Cycling Helmet #1,Sports
+2,Football #2,Sports
+3,Wireless Controller #3,Gaming
+4,VR Headset #4,Gaming
+5,Cycling Helmet #5,Sports
+6,Remote Control Car #6,Toys
+7,Mechanical Keyboard #7,Gaming
+8,Mechanical Keyboard #8,Gaming
+9,Cotton T-Shirt #9,Clothing
+10,Sunscreen #10,Beauty
+11,Board Game #11,Toys
+12,Winter Jacket #12,Clothing
+13,Dumbbell Set #13,Sports
+14,Winter Jacket #14,Clothing
+15,Clean Code #15,Books
+16,Vacuum Cleaner #16,Home
+17,Functional Programming in Scala #17,Books
+18,Perfume #18,Beauty
+19,History of Rome #19,Books
+20,Kitchen Knife Set #20,Home
+21,Face Moisturizer #21,Beauty
+22,Desk Lamp #22,Home
+23,Kitchen Knife Set #23,Home
+24,Face Moisturizer #24,Beauty
+25,4K Monitor #25,Electronics
+26,Wireless Controller #26,Gaming
+27,Shampoo #27,Beauty
+28,Cotton T-Shirt #28,Clothing
+29,Action Figure #29,Toys
+30,Cycling Helmet #30,Sports
+31,Wool Socks #31,Clothing
+32,Gaming Mouse #32,Gaming
+33,Action Figure #33,Toys
+34,Sunscreen #34,Beauty
+35,Football #35,Sports
+36,Gaming Mouse #36,Gaming
+37,Gaming Chair #37,Gaming
+38,Winter Jacket #38,Clothing
+39,Cotton T-Shirt #39,Clothing
+40,Winter Jacket #40,Clothing
+41,Wool Socks #41,Clothing
+42,Perfume #42,Beauty
+43,History of Rome #43,Books
+44,Sunscreen #44,Beauty
+45,Wool Socks #45,Clothing
+46,Gaming Mouse #46,Gaming
+47,Functional Programming in Scala #47,Books
+48,History of Rome #48,Books
+49,Shampoo #49,Beauty
+50,Winter Jacket #50,Clothing
+51,Cotton T-Shirt #51,Clothing
+52,Football #52,Sports
+53,Dumbbell Set #53,Sports
+54,Gaming Mouse #54,Gaming
+55,Desk Lamp #55,Home
+56,Gaming Chair #56,Gaming
+57,Shampoo #57,Beauty
+58,Face Moisturizer #58,Beauty
+59,Coffee Maker #59,Home
+60,Gaming Chair #60,Gaming
+61,Cycling Helmet #61,Sports
+62,Board Game #62,Toys
+63,Science Fiction Anthology #63,Books
+64,Lipstick #64,Beauty
+65,Tennis Racket #65,Sports
+66,Running Shoes #66,Clothing
+67,Mechanical Keyboard #67,Gaming
+68,Bed Sheets #68,Home
+69,Tennis Racket #69,Sports
+70,History of Rome #70,Books
+71,Running Shoes #71,Clothing
+72,4K Monitor #72,Electronics
+73,4K Monitor #73,Electronics
+74,Winter Jacket #74,Clothing
+75,Dumbbell Set #75,Sports
+76,Cotton T-Shirt #76,Clothing
+77,Building Blocks Set #77,Toys
+78,Wool Socks #78,Clothing
+79,Dumbbell Set #79,Sports
+80,Shampoo #80,Beauty

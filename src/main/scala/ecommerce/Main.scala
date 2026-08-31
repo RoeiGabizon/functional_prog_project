@@ -1,8 +1,8 @@
 package ecommerce
 
-import ecommerce.analytics.TransactionAnalytics
+import ecommerce.analytics.{ProductAnalytics, TransactionAnalytics}
 import ecommerce.io.{DataLoader, DataWriter}
-import ecommerce.parsing.TransactionRDDParser
+import ecommerce.parsing.{ProductRDDParser, TransactionRDDParser}
 import org.apache.spark.sql.SparkSession
 
 /** Entry point of the Functional E-Commerce Analytics application.
@@ -13,14 +13,22 @@ import org.apache.spark.sql.SparkSession
   *
   * The functional core (parsing, analytics, functional utilities) is kept
   * independent from Spark and I/O concerns wherever possible.
+  *
+  * This object only consumes `data/transactions.csv` and `data/products.csv`;
+  * it never generates them. Use [[ecommerce.generator.DataGenerator]]
+  * separately to (re)create a sample dataset.
   */
 object Main {
 
   private val TransactionsPath = "data/transactions.csv"
+  private val ProductsPath = "data/products.csv"
+
   private val RevenueByCategoryOutputPath = "output/revenue_by_category"
   private val PurchasesByCountryOutputPath = "output/purchases_by_country"
-  private val ExpensiveTransactionsOutputPath = "output/expensive_transactions"
-  private val ExpensiveTransactionThreshold = 50.0
+  private val RevenueByProductOutputPath = "output/revenue_by_product"
+  private val QuantityByProductOutputPath = "output/quantity_by_product"
+
+  private val TopProductsLimit = 5
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
@@ -31,38 +39,53 @@ object Main {
 
     println("Spark session started successfully.")
 
-    // 1. Load raw transaction lines (I/O layer).
-    val rawLines = DataLoader.loadTransactionLines(spark, TransactionsPath)
+    // 1 & 2. Load raw lines for both datasets (I/O layer).
+    val rawTransactionLines = DataLoader.loadTransactionLines(spark, TransactionsPath)
+    val rawProductLines = DataLoader.loadProductLines(spark, ProductsPath)
 
-    // 2. Parse each line into an Either[String, Transaction].
-    // Cached because it is the shared source for both the valid-transaction
-    // RDD and the invalid-record counts below, avoiding re-parsing the raw
-    // lines twice.
-    val parseResults = TransactionRDDParser.parseResults(rawLines).cache()
+    // 3. Parse and validate both datasets.
+    // Cached because each parse-result RDD is the shared source for both its
+    // validation counts and its derived valid-record RDD below.
+    val transactionParseResults = TransactionRDDParser.parseResults(rawTransactionLines).cache()
+    val productParseResults = ProductRDDParser.parseResults(rawProductLines).cache()
 
-    val inputCount = parseResults.count()
-    val transactions = TransactionRDDParser.validTransactions(parseResults)
-    transactions.cache()
-    val validCount = transactions.count()
-    val invalidCount = inputCount - validCount
+    val transactions = TransactionRDDParser.validTransactions(transactionParseResults).cache()
+    val products = ProductRDDParser.validProducts(productParseResults).cache()
 
-    println(s"Input records: $inputCount")
-    println(s"Valid transactions: $validCount")
-    println(s"Invalid transactions: $invalidCount")
+    // 4. Display validation counts.
+    val transactionInputCount = transactionParseResults.count()
+    val validTransactionCount = transactions.count()
+    println("Transactions:")
+    println(s"Input records: $transactionInputCount")
+    println(s"Valid transactions: $validTransactionCount")
+    println(s"Invalid transactions: ${transactionInputCount - validTransactionCount}")
 
-    // 4. Revenue by category.
+    val productInputCount = productParseResults.count()
+    val validProductCount = products.count()
+    println("Products:")
+    println(s"Input records: $productInputCount")
+    println(s"Valid products: $validProductCount")
+    println(s"Invalid products: ${productInputCount - validProductCount}")
+
+    // 5 & 6. transactions and products RDDs are ready above; 7. run analytics.
     val revenueByCategory = TransactionAnalytics.revenueByCategory(transactions)
-
-    // 5. Purchases by country.
     val purchasesByCountry = TransactionAnalytics.purchasesByCountry(transactions)
+    val revenueByProduct = ProductAnalytics.revenueByProduct(transactions, products)
+    val quantityByProduct = ProductAnalytics.quantitySoldByProduct(transactions, products)
+    val topProducts = ProductAnalytics.topProductsByRevenue(transactions, products, TopProductsLimit)
+    val missingProductReferences = ProductAnalytics.transactionsWithMissingProducts(transactions, products)
 
-    // 6. Transactions with price >= threshold, using the curried predicate.
-    val expensiveTransactions = transactions.filter(TransactionAnalytics.minimumPrice(ExpensiveTransactionThreshold))
+    println(s"Transactions referencing missing products: ${missingProductReferences.count()}")
 
-    // 7. Persist results (I/O layer).
+    // 8. Save results (I/O layer).
     DataWriter.writeLines(revenueByCategory.map { case (category, total) => s"$category,$total" }, RevenueByCategoryOutputPath)
     DataWriter.writeLines(purchasesByCountry.map { case (country, count) => s"$country,$count" }, PurchasesByCountryOutputPath)
-    DataWriter.writeLines(expensiveTransactions.map(_.toString), ExpensiveTransactionsOutputPath)
+    DataWriter.writeLines(revenueByProduct.map { case (name, total) => s"$name,$total" }, RevenueByProductOutputPath)
+    DataWriter.writeLines(quantityByProduct.map { case (name, quantity) => s"$name,$quantity" }, QuantityByProductOutputPath)
+
+    // 9. Print a small summary of the top products.
+    println(s"Top $TopProductsLimit products by revenue:")
+    topProducts.foreach { case (name, total) => println(s"$name -> $total") }
 
     spark.stop()
     println("Spark session stopped successfully.")
