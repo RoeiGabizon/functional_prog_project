@@ -1,12 +1,16 @@
 package ecommerce.analytics
 
 import ecommerce.model.Transaction
+import ecommerce.parsing.TransactionParser
+import org.apache.spark.rdd.RDD
 
-/** Pure analytics functions over [[Transaction]] data.
+/** Analytics functions over [[Transaction]] data.
   *
-  * Every function in this object is intended to be a pure function:
-  * no side effects, no I/O, no mutable state, and no Spark dependency
-  * where possible. This keeps the analytics layer independently testable.
+  * The single-transaction functions (such as `revenue`) and the predicate
+  * `minimumPrice` are pure and require no Spark dependency, so they can be
+  * unit tested without starting a SparkSession. The RDD-based functions
+  * demonstrate the required functional Spark operations (`map`, `flatMap`,
+  * `reduceByKey`) while still delegating all business rules to pure helpers.
   */
 object TransactionAnalytics {
 
@@ -18,9 +22,70 @@ object TransactionAnalytics {
   def revenue(transaction: Transaction): Double =
     transaction.price * transaction.quantity
 
-  // TODO: def revenueByCategory(transactions: Seq[Transaction]): Map[String, Double]
-  // TODO: def purchasesByCountry(transactions: Seq[Transaction]): Map[String, Int]
-  // TODO: def topProducts(transactions: Seq[Transaction], topN: Int): Seq[(Long, Double)]
-  // TODO: def topCustomers(transactions: Seq[Transaction], topN: Int): Seq[(Long, Double)]
-  // TODO: def averageTransactionValue(transactions: Seq[Transaction]): Double
+  /** A curried predicate that checks whether a transaction's price meets
+    * a given minimum threshold.
+    *
+    * Currying `minimum` separately from `transaction` lets callers partially
+    * apply the function (e.g. `minimumPrice(50.0)`) to obtain a reusable
+    * `Transaction => Boolean` predicate — a closure over `minimum` — which
+    * can be passed directly to Spark's `filter`.
+    *
+    * @param minimum     the minimum acceptable price
+    * @param transaction the transaction to test
+    * @return true if the transaction's price is greater than or equal to `minimum`
+    */
+  def minimumPrice(minimum: Double)(transaction: Transaction): Boolean =
+    transaction.price >= minimum
+
+  /** Converts raw CSV lines into an RDD of valid [[Transaction]] values.
+    *
+    * Each line is parsed independently via [[TransactionParser.parseLine]],
+    * which returns an `Either[String, Transaction]`. Pattern matching is
+    * used inside `flatMap` to keep only the successfully parsed lines:
+    * `Right(transaction)` contributes exactly one element to the resulting
+    * RDD, while `Left(_)` (a parsing failure) contributes none. This is a
+    * standard functional idiom for turning a validation result into an
+    * optional value without throwing exceptions or using mutable state.
+    *
+    * @param lines raw, unparsed CSV lines (header already removed)
+    * @return an RDD containing only the successfully parsed transactions
+    */
+  def parseTransactions(lines: RDD[String]): RDD[Transaction] =
+    lines
+      .map(TransactionParser.parseLine)
+      .flatMap {
+        case Right(transaction) => Some(transaction)
+        case Left(_)            => None
+      }
+
+  /** Computes total revenue per product category.
+    *
+    * Uses `map` to project each transaction into a `(category, revenue)`
+    * pair, then `reduceByKey` to sum revenues per category in a
+    * distributed, functional manner (no local collection, no mutable state).
+    *
+    * @param transactions the RDD of parsed transactions
+    * @return an RDD of `(category, totalRevenue)` pairs
+    */
+  def revenueByCategory(transactions: RDD[Transaction]): RDD[(String, Double)] =
+    transactions
+      .map(transaction => transaction.category -> revenue(transaction))
+      .reduceByKey(_ + _)
+
+  /** Counts the number of transaction records per country.
+    *
+    * Uses `map` to project each transaction into a `(country, 1)` pair,
+    * then `reduceByKey` to sum the counts per country.
+    *
+    * @param transactions the RDD of parsed transactions
+    * @return an RDD of `(country, transactionCount)` pairs
+    */
+  def purchasesByCountry(transactions: RDD[Transaction]): RDD[(String, Int)] =
+    transactions
+      .map(transaction => transaction.country -> 1)
+      .reduceByKey(_ + _)
+
+  // TODO: def topProducts(transactions: RDD[Transaction], topN: Int): Array[(Long, Double)]
+  // TODO: def topCustomers(transactions: RDD[Transaction], topN: Int): Array[(Long, Double)]
+  // TODO: def averageTransactionValue(transactions: RDD[Transaction]): Double
 }

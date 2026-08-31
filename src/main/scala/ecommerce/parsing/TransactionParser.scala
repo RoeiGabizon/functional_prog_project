@@ -36,7 +36,11 @@ object TransactionParser {
         productId     <- parseLong(productIdStr, "productId")
         price         <- parseDouble(priceStr, "price")
         quantity      <- parseInt(quantityStr, "quantity")
-      } yield Transaction(transactionId, userId, productId, category, price, quantity, country, date)
+        validCategory <- requireNonEmpty(category, "category")
+        validCountry  <- requireNonEmpty(country, "country")
+        validPrice    <- requireNonNegativePrice(price)
+        validQuantity <- requirePositiveQuantity(quantity)
+      } yield Transaction(transactionId, userId, productId, validCategory, validPrice, validQuantity, validCountry, date)
     }
   }
 
@@ -48,4 +52,13 @@ object TransactionParser {
 
   private def parseDouble(value: String, fieldName: String): Either[String, Double] =
     Try(value.toDouble).toEither.left.map(_ => s"Invalid $fieldName: '$value'")
+
+  private def requireNonEmpty(value: String, fieldName: String): Either[String, String] =
+    if (value.isEmpty) Left(s"Field $fieldName must not be empty") else Right(value)
+
+  private def requireNonNegativePrice(price: Double): Either[String, Double] =
+    if (price < 0) Left(s"Price must not be negative: $price") else Right(price)
+
+  private def requirePositiveQuantity(quantity: Int): Either[String, Int] =
+    if (quantity <= 0) Left(s"Quantity must be positive: $quantity") else Right(quantity)
 }

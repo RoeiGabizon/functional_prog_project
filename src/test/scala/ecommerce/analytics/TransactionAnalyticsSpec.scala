@@ -20,6 +20,23 @@ class TransactionAnalyticsSpec extends AnyFunSuite {
     assert(TransactionAnalytics.revenue(transaction) == 150.0)
   }
 
-  // TODO: add tests for revenueByCategory, purchasesByCountry, topProducts,
-  //       topCustomers and averageTransactionValue once implemented.
+  test("minimumPrice(50.0) returns true when price is exactly the threshold") {
+    val transaction = Transaction(1, 10, 100, "Electronics", 50.0, 1, "Israel", "2026-01-01")
+
+    assert(TransactionAnalytics.minimumPrice(50.0)(transaction))
+  }
+
+  test("minimumPrice(50.0) returns true when price is above the threshold") {
+    val transaction = Transaction(1, 10, 100, "Electronics", 120.0, 1, "Israel", "2026-01-01")
+
+    assert(TransactionAnalytics.minimumPrice(50.0)(transaction))
+  }
+
+  test("minimumPrice(50.0) returns false when price is below the threshold") {
+    val transaction = Transaction(1, 10, 100, "Books", 15.5, 2, "USA", "2026-01-02")
+
+    assert(!TransactionAnalytics.minimumPrice(50.0)(transaction))
+  }
+
+  // TODO: add tests for topProducts, topCustomers and averageTransactionValue once implemented.
 }

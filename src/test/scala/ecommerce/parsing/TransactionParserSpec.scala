@@ -27,5 +27,39 @@ class TransactionParserSpec extends AnyFunSuite {
     assert(TransactionParser.parseLine(line).isLeft)
   }
 
-  // TODO: add more edge-case tests (invalid numeric fields, empty strings, etc.)
+  test("parseLine returns Left(error) when a numeric value cannot be parsed") {
+    val line = "1,10,100,Electronics,not-a-price,3,Israel,2026-01-01"
+
+    assert(TransactionParser.parseLine(line).isLeft)
+  }
+
+  test("parseLine returns Left(error) when price is negative") {
+    val line = "1,10,100,Electronics,-10.0,3,Israel,2026-01-01"
+
+    assert(TransactionParser.parseLine(line).isLeft)
+  }
+
+  test("parseLine returns Left(error) when quantity is zero") {
+    val line = "1,10,100,Electronics,50.0,0,Israel,2026-01-01"
+
+    assert(TransactionParser.parseLine(line).isLeft)
+  }
+
+  test("parseLine returns Left(error) when quantity is negative") {
+    val line = "1,10,100,Electronics,50.0,-3,Israel,2026-01-01"
+
+    assert(TransactionParser.parseLine(line).isLeft)
+  }
+
+  test("parseLine returns Left(error) when category is empty") {
+    val line = "1,10,100,,50.0,3,Israel,2026-01-01"
+
+    assert(TransactionParser.parseLine(line).isLeft)
+  }
+
+  test("parseLine returns Left(error) when country is empty") {
+    val line = "1,10,100,Electronics,50.0,3,,2026-01-01"
+
+    assert(TransactionParser.parseLine(line).isLeft)
+  }
 }

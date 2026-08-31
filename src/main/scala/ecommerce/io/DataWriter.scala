@@ -1,6 +1,7 @@
 package ecommerce.io
 
-import org.apache.spark.sql.DataFrame
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.spark.rdd.RDD
 
 /** Responsible ONLY for writing Spark computation results to storage.
   *
@@ -10,15 +11,33 @@ import org.apache.spark.sql.DataFrame
   */
 object DataWriter {
 
-  /** Writes a DataFrame of results to the given output path.
+  /** Saves an RDD of text lines to the given output path using Spark's
+    * `saveAsTextFile`.
     *
-    * @param data       the computed result DataFrame to persist
+    * Since `saveAsTextFile` fails if the target directory already exists,
+    * this function first removes any pre-existing directory at
+    * `outputPath` using the Hadoop FileSystem API, so that development
+    * reruns work cleanly.
+    *
+    * @param data       the RDD of lines to persist (already formatted as strings)
     * @param outputPath destination directory for the output
-    * @param format     output format (e.g. "csv", "parquet"), defaults to "csv"
     */
-  def write(data: DataFrame, outputPath: String, format: String = "csv"): Unit = {
-    // TODO: implement actual writing, e.g.:
-    // data.write.mode("overwrite").option("header", "true").format(format).save(outputPath)
-    ()
+  def writeLines(data: RDD[String], outputPath: String): Unit = {
+    deleteIfExists(data, outputPath)
+    data.saveAsTextFile(outputPath)
+  }
+
+  /** Deletes the target output directory if it already exists, so that
+    * `saveAsTextFile` can recreate it without failing.
+    *
+    * @param data       an RDD used only to access the SparkContext's Hadoop configuration
+    * @param outputPath directory to remove, if present
+    */
+  private def deleteIfExists(data: RDD[String], outputPath: String): Unit = {
+    val path = new Path(outputPath)
+    val fileSystem = path.getFileSystem(data.sparkContext.hadoopConfiguration)
+    if (fileSystem.exists(path)) {
+      fileSystem.delete(path, true)
+    }
   }
 }
