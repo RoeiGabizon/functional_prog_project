@@ -1,0 +1,6 @@
+transactionId,userId,productId,category,price,quantity,country,date
+1,10,100,Electronics,50.0,3,Israel,2026-01-01
+2,11,101,Books,15.5,2,USA,2026-01-02
+3,12,102,Clothing,29.99,1,Germany,2026-01-02
+4,10,103,Electronics,120.0,1,Israel,2026-01-03
+5,13,104,Toys,9.99,5,France,2026-01-04
