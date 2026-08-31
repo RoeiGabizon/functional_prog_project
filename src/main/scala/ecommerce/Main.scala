@@ -1,6 +1,7 @@
 package ecommerce
 
 import ecommerce.analytics.{ProductAnalytics, TransactionAnalytics}
+import ecommerce.functional.FunctionalUtils
 import ecommerce.io.{DataLoader, DataWriter}
 import ecommerce.parsing.{ProductRDDParser, TransactionRDDParser}
 import org.apache.spark.sql.SparkSession
@@ -29,9 +30,11 @@ object Main {
   private val RevenueByProductCategoryOutputPath = "output/revenue_by_product_category"
   private val QuantityByProductOutputPath = "output/quantity_by_product"
   private val ExpensiveTransactionsOutputPath = "output/expensive_transactions"
+  private val ExpensiveElectronicsOutputPath = "output/expensive_electronics"
 
   private val TopProductsLimit = 5
   private val ExpensiveTransactionThreshold = 300.0
+  private val ExpensiveElectronicsCategory = "Electronics"
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
@@ -83,7 +86,18 @@ object Main {
     // currying, a closure over `ExpensiveTransactionThreshold`, and Spark's filter.
     val expensiveTransactions = transactions.filter(TransactionAnalytics.minimumPrice(ExpensiveTransactionThreshold))
 
+    // Custom combinator: combines two curried predicates (minimumPrice AND
+    // belongsToCategory) into a single Transaction => Boolean, which is then
+    // passed straight to Spark's filter. This is distinct from Function1's
+    // built-in andThen/compose, which are used separately for normalizeCategory.
+    val expensiveElectronics = FunctionalUtils.and(
+      TransactionAnalytics.minimumPrice(ExpensiveTransactionThreshold),
+      TransactionAnalytics.belongsToCategory(ExpensiveElectronicsCategory)
+    )
+    val expensiveElectronicsTransactions = transactions.filter(expensiveElectronics)
+
     println(s"Transactions referencing missing products: ${missingProductReferences.count()}")
+    println(s"Expensive Electronics transactions: ${expensiveElectronicsTransactions.count()}")
 
     // 8. Save results (I/O layer).
     DataWriter.writeLines(revenueByCategory.map { case (category, total) => s"$category,$total" }, RevenueByCategoryOutputPath)
@@ -98,10 +112,21 @@ object Main {
       },
       ExpensiveTransactionsOutputPath
     )
+    DataWriter.writeLines(
+      expensiveElectronicsTransactions.map { transaction =>
+        import transaction._
+        s"$transactionId,$userId,$productId,$category,$price,$quantity,$country,$date"
+      },
+      ExpensiveElectronicsOutputPath
+    )
 
-    // 9. Print a small summary of the top products.
+    // 9. Print a small summary of the top products, plus a tail-recursive
+    // sum of their (small, locally-held) revenue values.
     println(s"Top $TopProductsLimit products by revenue:")
     topProducts.foreach { case (name, total) => println(s"$name -> $total") }
+
+    val combinedTopRevenue = TransactionAnalytics.sumRevenue(topProducts.map(_._2).toList)
+    println(s"Combined revenue of top $TopProductsLimit products: $combinedTopRevenue")
 
     spark.stop()
     println("Spark session stopped successfully.")

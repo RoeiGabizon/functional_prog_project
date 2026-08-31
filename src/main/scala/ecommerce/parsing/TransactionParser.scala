@@ -1,5 +1,6 @@
 package ecommerce.parsing
 
+import ecommerce.functional.FunctionalUtils
 import ecommerce.model.Transaction
 
 import scala.util.Try
@@ -36,7 +37,10 @@ object TransactionParser {
         productId     <- parseLong(productIdStr, "productId")
         price         <- parseDouble(priceStr, "price")
         quantity      <- parseInt(quantityStr, "quantity")
-        validCategory <- requireNonEmpty(category, "category")
+        // Function composition: normalize raw category text (trim, lower-case,
+        // capitalize) before validating/storing it, so equivalent inputs such
+        // as " Electronics" and "ELECTRONICS " end up as the same "Electronics".
+        validCategory <- requireNonEmpty(FunctionalUtils.normalizeCategory(category), "category")
         validCountry  <- requireNonEmpty(country, "country")
         validPrice    <- requireNonNegativePrice(price)
         validQuantity <- requirePositiveQuantity(quantity)

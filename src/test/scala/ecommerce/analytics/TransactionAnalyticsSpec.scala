@@ -38,5 +38,37 @@ class TransactionAnalyticsSpec extends AnyFunSuite {
     assert(!TransactionAnalytics.minimumPrice(50.0)(transaction))
   }
 
+  test("belongsToCategory(\"Electronics\") returns true for an Electronics transaction") {
+    val transaction = Transaction(1, 10, 100, "Electronics", 50.0, 1, "Israel", "2026-01-01")
+
+    assert(TransactionAnalytics.belongsToCategory("Electronics")(transaction))
+  }
+
+  test("belongsToCategory(\"Electronics\") returns false for a different category") {
+    val transaction = Transaction(1, 10, 100, "Books", 50.0, 1, "Israel", "2026-01-01")
+
+    assert(!TransactionAnalytics.belongsToCategory("Electronics")(transaction))
+  }
+
+  test("minimumQuantity(2) returns true when quantity meets the threshold") {
+    val transaction = Transaction(1, 10, 100, "Electronics", 50.0, 2, "Israel", "2026-01-01")
+
+    assert(TransactionAnalytics.minimumQuantity(2)(transaction))
+  }
+
+  test("minimumQuantity(2) returns false when quantity is below the threshold") {
+    val transaction = Transaction(1, 10, 100, "Electronics", 50.0, 1, "Israel", "2026-01-01")
+
+    assert(!TransactionAnalytics.minimumQuantity(2)(transaction))
+  }
+
+  test("sumRevenue sums a list of revenue values") {
+    assert(TransactionAnalytics.sumRevenue(List(10.0, 20.0, 30.0)) == 60.0)
+  }
+
+  test("sumRevenue returns 0.0 for an empty list") {
+    assert(TransactionAnalytics.sumRevenue(Nil) == 0.0)
+  }
+
   // TODO: add tests for topProducts, topCustomers and averageTransactionValue once implemented.
 }

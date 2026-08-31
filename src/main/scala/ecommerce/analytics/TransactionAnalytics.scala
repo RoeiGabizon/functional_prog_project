@@ -3,6 +3,8 @@ package ecommerce.analytics
 import ecommerce.model.Transaction
 import org.apache.spark.rdd.RDD
 
+import scala.annotation.tailrec
+
 /** Analytics functions over [[Transaction]] data.
   *
   * This object is analytics-only: it does not read files, parse CSV, write
@@ -42,6 +44,31 @@ object TransactionAnalytics {
   def minimumPrice(minimum: Double)(transaction: Transaction): Boolean =
     transaction.price >= minimum
 
+  /** A curried predicate that checks whether a transaction belongs to a
+    * given category.
+    *
+    * Like [[minimumPrice]], currying `category` separately from
+    * `transaction` yields a reusable `Transaction => Boolean` closure over
+    * `category`, suitable for combining with [[ecommerce.functional.FunctionalUtils.and]]
+    * or passing directly to Spark's `filter`.
+    *
+    * @param category    the category to match
+    * @param transaction the transaction to test
+    * @return true if the transaction's category equals `category`
+    */
+  def belongsToCategory(category: String)(transaction: Transaction): Boolean =
+    transaction.category == category
+
+  /** A curried predicate that checks whether a transaction's quantity meets
+    * a given minimum threshold.
+    *
+    * @param quantity    the minimum acceptable quantity
+    * @param transaction the transaction to test
+    * @return true if the transaction's quantity is greater than or equal to `quantity`
+    */
+  def minimumQuantity(quantity: Int)(transaction: Transaction): Boolean =
+    transaction.quantity >= quantity
+
   /** Computes total revenue per product category.
     *
     * Uses `map` to project each transaction into a `(category, revenue)`
@@ -72,4 +99,24 @@ object TransactionAnalytics {
   // TODO: def topProducts(transactions: RDD[Transaction], topN: Int): Array[(Long, Double)]
   // TODO: def topCustomers(transactions: RDD[Transaction], topN: Int): Array[(Long, Double)]
   // TODO: def averageTransactionValue(transactions: RDD[Transaction]): Double
+
+  /** Sums a small, local list of revenue values using tail recursion.
+    *
+    * Intended for small local collections (e.g. the handful of values in a
+    * Spark `takeOrdered`/`take` result), not for reducing the full
+    * distributed dataset — that remains Spark's job via `reduceByKey`.
+    *
+    * @param values the revenue values to sum
+    * @return the sum of `values`, or `0.0` for an empty list
+    */
+  def sumRevenue(values: List[Double]): Double = {
+    @tailrec
+    def loop(remaining: List[Double], accumulator: Double): Double =
+      remaining match {
+        case Nil          => accumulator
+        case head :: tail => loop(tail, accumulator + head)
+      }
+
+    loop(values, 0.0)
+  }
 }
