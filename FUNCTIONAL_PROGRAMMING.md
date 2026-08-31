@@ -12,10 +12,11 @@ later, and it is kept in sync with the actual source code.
 | Immutable case classes | `ecommerce.model.Transaction`, `ecommerce.model.Product` | (case class fields) | All fields are `val`; instances cannot be mutated after creation. |
 | Pure functions | `TransactionAnalytics` | `revenue` | Depends only on its input `Transaction`, has no side effects, and always returns the same output for the same input. |
 | Immutable state | Project-wide | `val` everywhere, no `var` | All local bindings and RDDs are immutable; transformations produce new values/RDDs instead of mutating existing ones. |
-| Higher-order functions | `ecommerce.functional.FunctionalUtils` | `transformIf` | Accepts two functions (`predicate`, `transformation`) as parameters and applies one of them depending on the predicate's result. |
+| Higher-order functions | `ecommerce.functional.FunctionalUtils` | `transformIf` | Accepts two functions (`predicate`, `transformation`) as parameters and applies one of them depending on the predicate's result; demonstrated and verified by unit tests. |
 | Higher-order functions (Spark) | Various | `map`, `flatMap`, `filter`, `reduceByKey` | Spark's RDD API itself is built on higher-order functions passed by the caller. |
 | Currying | `TransactionAnalytics` | `minimumPrice`, `belongsToCategory`, `minimumQuantity` | Each has two parameter lists; partially applying the first (e.g. `minimumPrice(300.0)`) yields a reusable `Transaction => Boolean`. |
 | Closures | `Main` | `expensiveTransactions`, `expensiveElectronics` | The predicates returned by the curried functions above close over the threshold/category values supplied at call time. |
+| Trait / generic abstraction | `ecommerce.parsing.CsvParser` | `CsvParser[A]`, `TransactionParser`, `ProductParser` | `CsvParser[A]` defines a reusable parsing contract returning `Either[String, A]`; `TransactionParser` and `ProductParser` implement that contract for their respective immutable case classes. |
 
 ## Advanced FP Techniques
 

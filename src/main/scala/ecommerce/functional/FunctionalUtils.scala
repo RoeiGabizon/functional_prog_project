@@ -1,12 +1,16 @@
 package ecommerce.functional
 
-/** A collection of general-purpose functional programming utilities,
-  * independent of the e-commerce domain and Spark.
+/** A collection of reusable, general-purpose functional programming
+  * utilities, independent of the e-commerce domain and Spark.
   *
   * These functions are generic (parameterized over a type `A`) so they can
   * be reused across the project wherever a predicate or transformation is
-  * needed, but every function here is actually exercised by real project
-  * code (see `Main` and `TransactionParser`) rather than left unused.
+  * needed. Some are integrated into the production pipeline — notably the
+  * custom `and` combinator (used in `Main` to build a Spark filter
+  * predicate) and the `normalizeCategory` composition (used in
+  * `TransactionParser`) — while others (`or`, `not`, `transformIf`) are
+  * general-purpose helpers demonstrated and verified by unit tests rather
+  * than wired into `Main` or the parsers.
   */
 object FunctionalUtils {
 

@@ -9,8 +9,9 @@ import scala.util.Try
   * This object contains no I/O and no Spark dependency: it operates purely
   * on Strings, making it easy to unit test in isolation. Parsing failures
   * are represented functionally via `Either`, rather than thrown exceptions.
+  * Implements [[CsvParser]] for [[Product]].
   */
-object ProductParser {
+object ProductParser extends CsvParser[Product] {
 
   private val ExpectedFieldCount = 3
 
@@ -22,7 +23,7 @@ object ProductParser {
     * @param line a raw, comma-separated CSV line (without header)
     * @return `Right(Product)` on success, or `Left(errorMessage)` on failure
     */
-  def parseLine(line: String): Either[String, Product] = {
+  override def parseLine(line: String): Either[String, Product] = {
     val fields = line.split(",", -1).map(_.trim)
 
     if (fields.length != ExpectedFieldCount) {

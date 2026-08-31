@@ -96,10 +96,6 @@ object TransactionAnalytics {
       .map(transaction => transaction.country -> 1)
       .reduceByKey(_ + _)
 
-  // TODO: def topProducts(transactions: RDD[Transaction], topN: Int): Array[(Long, Double)]
-  // TODO: def topCustomers(transactions: RDD[Transaction], topN: Int): Array[(Long, Double)]
-  // TODO: def averageTransactionValue(transactions: RDD[Transaction]): Double
-
   /** Sums a small, local list of revenue values using tail recursion.
     *
     * Intended for small local collections (e.g. the handful of values in a
