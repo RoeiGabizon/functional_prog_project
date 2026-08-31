@@ -25,6 +25,13 @@ object DataGenerator {
   // so the parsing/validation pipeline has something meaningful to report.
   private val InvalidRowFraction = 0.007
 
+  // Small, controlled fraction of transactions that are otherwise valid
+  // (they pass TransactionParser) but reference a productId outside the
+  // generated product catalog, so ProductAnalytics.transactionsWithMissingProducts
+  // has something meaningful to report. This is a referential-integrity
+  // concern, not a parsing concern, so it is kept separate from InvalidRowFraction.
+  private val MissingProductFraction = 0.002
+
   private val Categories = Seq("Electronics", "Books", "Gaming", "Clothing", "Home", "Sports", "Beauty", "Toys")
   private val Countries = Seq("Israel", "USA", "UK", "Germany", "France", "Canada", "Japan", "Australia")
 
@@ -80,8 +87,9 @@ object DataGenerator {
 
   private def generateTransactionLines(random: Random, products: Seq[GeneratedProduct]): Seq[String] =
     (1 to TransactionCount).map { transactionId =>
-      val isInvalid = random.nextDouble() < InvalidRowFraction
-      if (isInvalid) invalidTransactionLine(random, transactionId, products)
+      val roll = random.nextDouble()
+      if (roll < InvalidRowFraction) invalidTransactionLine(random, transactionId, products)
+      else if (roll < InvalidRowFraction + MissingProductFraction) missingProductTransactionLine(random, transactionId, products)
       else validTransactionLine(random, transactionId, products)
     }
 
@@ -121,13 +129,31 @@ object DataGenerator {
     }
   }
 
+  /** Produces a transaction line that is otherwise entirely valid (it will
+    * successfully pass [[ecommerce.parsing.TransactionParser]]) but uses a
+    * `productId` just beyond the generated product catalog range, so it has
+    * no matching entry in `products.csv`. This models a referential-integrity
+    * data-quality issue rather than a parsing failure.
+    */
+  private def missingProductTransactionLine(random: Random, transactionId: Int, products: Seq[GeneratedProduct]): String = {
+    val missingProductId = products.size + 1 + random.nextInt(1000)
+    val category = Categories(random.nextInt(Categories.size))
+    val userId = 1 + random.nextInt(2000)
+    val price = roundToCents(1.0 + random.nextDouble() * 499.0)
+    val quantity = 1 + random.nextInt(5)
+    val country = Countries(random.nextInt(Countries.size))
+    val date = randomDate(random)
+
+    s"$transactionId,$userId,$missingProductId,$category,$price,$quantity,$country,$date"
+  }
+
   private def roundToCents(value: Double): Double =
     math.round(value * 100.0) / 100.0
 
   private def randomDate(random: Random): String = {
     val month = 1 + random.nextInt(12)
     val day = 1 + random.nextInt(28)
-    f"2026-$month%02d-$day%02d"
+    f"2025-$month%02d-$day%02d"
   }
 
   private def writeCsv(path: String, header: String, lines: Seq[String]): Unit = {

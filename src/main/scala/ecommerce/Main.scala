@@ -26,9 +26,12 @@ object Main {
   private val RevenueByCategoryOutputPath = "output/revenue_by_category"
   private val PurchasesByCountryOutputPath = "output/purchases_by_country"
   private val RevenueByProductOutputPath = "output/revenue_by_product"
+  private val RevenueByProductCategoryOutputPath = "output/revenue_by_product_category"
   private val QuantityByProductOutputPath = "output/quantity_by_product"
+  private val ExpensiveTransactionsOutputPath = "output/expensive_transactions"
 
   private val TopProductsLimit = 5
+  private val ExpensiveTransactionThreshold = 300.0
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
@@ -71,9 +74,14 @@ object Main {
     val revenueByCategory = TransactionAnalytics.revenueByCategory(transactions)
     val purchasesByCountry = TransactionAnalytics.purchasesByCountry(transactions)
     val revenueByProduct = ProductAnalytics.revenueByProduct(transactions, products)
+    val revenueByProductCategory = ProductAnalytics.revenueByProductCategory(transactions, products)
     val quantityByProduct = ProductAnalytics.quantitySoldByProduct(transactions, products)
     val topProducts = ProductAnalytics.topProductsByRevenue(transactions, products, TopProductsLimit)
     val missingProductReferences = ProductAnalytics.transactionsWithMissingProducts(transactions, products)
+
+    // Curried predicate, partially applied to a fixed threshold: demonstrates
+    // currying, a closure over `ExpensiveTransactionThreshold`, and Spark's filter.
+    val expensiveTransactions = transactions.filter(TransactionAnalytics.minimumPrice(ExpensiveTransactionThreshold))
 
     println(s"Transactions referencing missing products: ${missingProductReferences.count()}")
 
@@ -81,7 +89,15 @@ object Main {
     DataWriter.writeLines(revenueByCategory.map { case (category, total) => s"$category,$total" }, RevenueByCategoryOutputPath)
     DataWriter.writeLines(purchasesByCountry.map { case (country, count) => s"$country,$count" }, PurchasesByCountryOutputPath)
     DataWriter.writeLines(revenueByProduct.map { case (name, total) => s"$name,$total" }, RevenueByProductOutputPath)
+    DataWriter.writeLines(revenueByProductCategory.map { case (category, total) => s"$category,$total" }, RevenueByProductCategoryOutputPath)
     DataWriter.writeLines(quantityByProduct.map { case (name, quantity) => s"$name,$quantity" }, QuantityByProductOutputPath)
+    DataWriter.writeLines(
+      expensiveTransactions.map { transaction =>
+        import transaction._
+        s"$transactionId,$userId,$productId,$category,$price,$quantity,$country,$date"
+      },
+      ExpensiveTransactionsOutputPath
+    )
 
     // 9. Print a small summary of the top products.
     println(s"Top $TopProductsLimit products by revenue:")
